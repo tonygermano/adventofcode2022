@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar ../javascript/rhino-1.7.15-SNAPSHOT.jar -version 200 -require main.js
