@@ -29,33 +29,33 @@
   (vector (input-to-stacks stacks-input)
           (input-to-instructions instructions-input)))
 
-(defn perform-operation [stacks [qty from to]]
-  (-> (update-in stacks [(dec to)] #(concat (reverse (take qty (stacks (dec from)))) %))
-      (#(update-in % [(dec from)] (fn [s] (drop qty s))))))
+(defn perform-operation [part stacks [qty from to]]
+  (let [part-fn (if (= :part1 part) reverse identity)]
+    (-> (update-in stacks [(dec to)] #(concat (part-fn (take qty (stacks (dec from)))) %))
+        (#(update-in % [(dec from)] (fn [s] (drop qty s)))))))
 
-(defn follow-instructions [[stacks instructions]]
+(defn follow-instructions [part [stacks instructions]]
   (if (empty? instructions)
     stacks
-    #(follow-instructions
-      (vector (perform-operation stacks (first instructions))
+    #(follow-instructions part
+      (vector (perform-operation part stacks (first instructions))
               (rest instructions)))))
 
 (defn part1 [input]
   (->> (get-resource input)
        (#(str/split % #"\n\n"))
        input-to-stacks-and-instructions
-       (trampoline follow-instructions)
+       (trampoline (partial follow-instructions :part1))
        (map first)
        (apply str)))
 
-(comment
-  (part1 "example")
-  )
-
 (defn part2 [input]
-  (->> input
-       (comment
-         (get-resource input))))
+  (->> (get-resource input)
+       (#(str/split % #"\n\n"))
+       input-to-stacks-and-instructions
+       (trampoline (partial follow-instructions :part2))
+       (map first)
+       (apply str)))
 
 (defn -main
   "Solves AoC day X"

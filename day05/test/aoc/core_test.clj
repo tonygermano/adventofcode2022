@@ -33,7 +33,10 @@ move 1 from 1 to 2
 (deftest perform-operation-test
   (testing "example"
     (is (= '[(\D \N \Z) (\C \M) (\P)]
-           (perform-operation '[(\N \Z) (\D \C \M) (\P)] '(1 2 1))))))
+           (perform-operation :part1 '[(\N \Z) (\D \C \M) (\P)] '(1 2 1)))))
+  (testing "example"
+    (is (= '[(\D \N \Z) (\C \M) (\P)]
+           (perform-operation :part2 '[(\N \Z) (\D \C \M) (\P)] '(1 2 1))))))
 
 
 (deftest part1-test
@@ -42,4 +45,4 @@ move 1 from 1 to 2
 
 (deftest part2-test
   (testing "example"
-    (is (= "answer" (part2 "example")))))
+    (is (= "MCD" (part2 "example")))))
