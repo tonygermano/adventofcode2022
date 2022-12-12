@@ -40,7 +40,7 @@
 
 (defn zip-navigate-to-subdir [pwd subdirname]
   (let [matches-dir? (fn [file] (and (= :dir (:type (z/node file)))
-                                    (= subdirname (:name (z/node file)))))]
+                                     (= subdirname (:name (z/node file)))))]
     (cond
       (= "/" subdirname) (loop [loc pwd]
                            (if (z/up loc)
@@ -50,7 +50,7 @@
       :else (loop [next-file (z/down pwd)]
               (if (matches-dir? next-file)
                 next-file
-                (recur (z/next next-file)))))))
+                (recur (z/right next-file)))))))
 
 (defn zip-add-to-dir [pwd filelist]
   (if (empty? filelist)
@@ -71,7 +71,7 @@
         :cd (recur (zip-navigate-to-subdir pwd (-> remaining-commands first :command :args first)) (rest remaining-commands))
         :ls (recur (zip-add-to-dir pwd (-> remaining-commands first :output)) (rest remaining-commands))))))
 
-(defn compute-dir-sizes [filesystem] 
+(defn compute-dir-sizes [filesystem]
   (let [root (zip-fs filesystem)
         start (loop [loc root]
                 (if (-> loc z/next z/end?)
@@ -79,12 +79,23 @@
                   (recur (z/next loc))))]
     (loop [loc start]
       (if (= :dir (-> loc z/node :type))
-        (let [size (apply + (map :size (z/children loc)))
+        (let [size (reduce + (map :size (z/children loc)))
               edited (z/edit loc #(assoc-in % [:size] size))]
           (if (nil? (z/prev edited))
             (z/root edited)
             (recur (z/prev edited))))
         (recur (z/prev loc))))))
+
+(defn print-fs 
+  "This isn't actually used in the solution. It prints out the filesystem
+   as a human readable string. The results of calling this on `input` after
+   calculating the dir sizes is in `input.fs.out`."
+  [filesystem]
+  (letfn [(helper [pwd depth]
+            (let [{type :type, size :size, name :name} pwd
+                  file->string (str (apply str (repeat depth "  ")) "- " name " (" type ", size=" size ")\n")]
+              (concat (seq file->string) (mapcat #(helper % (+ 2 depth)) (:children pwd)))))]
+    (helper filesystem 0)))
 
 (defn find-dirs-not-more-than-size [filesystem limit]
   (loop [loc (zip-fs filesystem)
@@ -104,12 +115,31 @@
        (#(find-dirs-not-more-than-size % 100000))
        (reduce +)))
 
+(defn collect-dirs [filesystem]
+  (loop [loc (zip-fs filesystem)
+         result ()]
+    (if (z/end? loc)
+      result
+      (if (= :dir (-> loc z/node :type))
+        (recur (z/next loc) (cons (z/node loc) result))
+        (recur (z/next loc) result)))))
+
+(defn find-dir-to-delete [filesystem]
+  (let [max-used (- 70000000 30000000)
+        current (:size filesystem)
+        min-size-required-to-delete (- current max-used)]
+    (->> (collect-dirs filesystem)
+         (map :size)
+         sort
+         (drop-while #(< % min-size-required-to-delete))
+         first)))
+
 (defn part2 [input]
-  (->> input
-       (comment
-         (get-resource input)
-         )
-       ))
+  (->> (get-resource input)
+       input->commands
+       commands->filesystem
+       compute-dir-sizes
+       find-dir-to-delete))
 
 (defn -main
   "Solves AoC day X"

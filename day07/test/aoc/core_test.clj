@@ -134,4 +134,4 @@ dir d")]
 
 (deftest part2-test
   (testing "example"
-    (is (= "answer" (part2 "example")))))
+    (is (= 24933642 (part2 "example")))))
