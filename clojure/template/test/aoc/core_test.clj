@@ -8,8 +8,8 @@
 
 (deftest part1-test
   (testing "example"
-    (is (= "answer" (part1 "example")))))
+    (is (= "answer" (part1 (get-resource "example"))))))
 
 (deftest part2-test
   (testing "example"
-    (is (= "answer" (part2 "example")))))
+    (is (= "answer" (part2 (get-resource "example"))))))
