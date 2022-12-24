@@ -10,6 +10,6 @@
   (testing "example"
     (is (= "answer" (part1 "example")))))
 
-((deftest part2-test
-   (testing "example"
-     (is (= "answer" (part2 "example"))))))
+(deftest part2-test
+  (testing "example"
+    (is (= "answer" (part2 "example")))))
