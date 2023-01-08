@@ -8,7 +8,7 @@
 
 (deftest string->Monkey-test
   (let [monkeys (->> (get-resource "example")
-                     parse-input)]
+                     (parse-input ->Monkey))]
     (testing "example0"
       (is (= (get monkeys 0) (->Monkey 0 (queue '(79 98)) "*" "19" 23 2 3))))
     (testing "example1"

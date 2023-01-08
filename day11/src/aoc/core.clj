@@ -1,6 +1,7 @@
 (ns aoc.core
   (:require [clojure.string :as str]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [com.rpl.specter :as s])
   (:gen-class))
 
 (defn get-resource [filename] (slurp (io/file (io/resource filename))))
@@ -38,7 +39,7 @@
            (tire-of-item monkey)
            (test-item monkey)))))
 
-(defn string->Monkey [s]
+(defn string->Monkey [monkey-constructor s]
   (let [lines (str/split-lines s)
         pairs (mapv #(str/split % #": ?") lines)
         id (-> pairs (get-in [0 0]) (str/split #" ") (get 1) Integer/parseInt)
@@ -47,11 +48,11 @@
         test-divisor (-> pairs (get-in [3 1]) (str/split #" ") (get 2) Integer/parseInt)
         monkey-if-true (-> pairs (get-in [4 1]) (str/split #" ") (get 3) Integer/parseInt)
         monkey-if-false (-> pairs (get-in [5 1]) (str/split #" ") (get 3) Integer/parseInt)]
-    (->Monkey id items op-string arg2 test-divisor monkey-if-true monkey-if-false)))
+    (monkey-constructor id items op-string arg2 test-divisor monkey-if-true monkey-if-false)))
 
-(defn parse-input [input]
+(defn parse-input [monkey-constructor input]
   (let [monkey-strings (str/split input #"\n\n")]
-    (mapv string->Monkey monkey-strings)))
+    (mapv (partial string->Monkey monkey-constructor) monkey-strings)))
 
 (defn create-part1-initial-state [monkeys]
   (let [ids (->> monkeys (map :id) sort)]
@@ -90,7 +91,7 @@
 
 (defn part1 [input]
   (->> input
-       parse-input
+       (parse-input ->Monkey)
        create-part1-initial-state
        (process-rounds 20)
        :inspections
@@ -99,10 +100,63 @@
        (take 2)
        (reduce *)))
 
+(defrecord Monkey2 [id items operation arg2 test-divisor monkey-if-true monkey-if-false]
+  MonkeyActions
+  (inspect-item [monkey item-worry-level]
+    (let [op (condp = (:operation monkey) "*" *, "+" +)
+          arg2 (:arg2 monkey)]
+      (map (fn [[divisor remainder]]
+             [divisor
+              (-> (op remainder (if (= "old" arg2) remainder (Integer/parseInt arg2)))
+                  (mod divisor))])
+           item-worry-level)))
+  (test-item [monkey item-worry-level]
+    (let [filtered (filter #(= (:test-divisor monkey) (first %)) item-worry-level)
+          divisible? (= 0 (get (first filtered) 1))
+          to-monkey (if divisible? (:monkey-if-true monkey) (:monkey-if-false monkey))]
+      (->ThrownItem (:id monkey) to-monkey item-worry-level)))
+  (tire-of-item [_ item-worry-level]
+    item-worry-level)
+  (peek-item [monkey]
+    (when-let [item-worry-level (peek (:items monkey))]
+      (->> item-worry-level
+           (inspect-item monkey)
+           (tire-of-item monkey)
+           (test-item monkey)))))
+
+(defn convert-item
+  "Initial worry level is converted to a list of pairs where the first number
+   or each pair is the divisor property from one of the monkeys and the second
+   number in the pair is the remainder when dividing the worry level by the
+   divisor.
+   
+   The operations of each inspection are to be applied to the remainder of
+   each pair, and then the mod operation will be repeated. This is how we
+   will manage the worry level and keep it from growing out of control while
+   being able to quickly determine and of the monkey tests by finding the
+   divisor in the list and checking if the remainder value is 0."
+  [divisors item-worry-level]
+  (map (fn [divisor] [divisor (mod item-worry-level divisor)]) divisors))
+
+
+(defn create-part2-initial-state [monkeys]
+  (let [ids (->> monkeys (map :id) sort)
+        divisors (->> monkeys (map :test-divisor))
+        monkeys-with-converted-items (s/transform [s/ALL :items s/ALL] (partial convert-item divisors) monkeys)]
+    {:monkeys monkeys-with-converted-items
+     :ids ids
+     :inspections (vec (repeat (count ids) 0))}))
+
 (defn part2 [input]
   (->> input
-       
-       ))
+       (parse-input ->Monkey2)
+       create-part2-initial-state
+       (process-rounds 10000)
+       :inspections
+       sort
+       reverse
+       (take 2)
+       (reduce *)))
 
 (defn -main
   "Solves AoC day X"
